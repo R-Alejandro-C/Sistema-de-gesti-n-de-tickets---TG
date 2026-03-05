@@ -1,0 +1,78 @@
+{
+  "autenticacion": [
+    {
+      "test": "Login Admin Válido",
+      "status": "PASS",
+      "code": 201
+    },
+    {
+      "test": "Login Password Incorrecto",
+      "status": "PASS",
+      "code": 401
+    }
+  ],
+  "autorizacion": [
+    {
+      "test": "Acceso sin Token",
+      "status": "PASS",
+      "code": 401
+    },
+    {
+      "test": "Listar Usuarios (Admin)",
+      "status": "PASS",
+      "count": 3
+    }
+  ],
+  "validaciones": [
+    {
+      "test": "Payload Incompleto",
+      "status": "PASS",
+      "code": 400,
+      "errors": [
+        "mail must be an email",
+        "password must be longer than or equal to 6 characters",
+        "password must be a string",
+        "id_rol must be a number conforming to the specified constraints"
+      ]
+    }
+  ],
+  "diseno_rest": [
+    {
+      "test": "Métricas API",
+      "status": "PASS",
+      "data": {
+        "total_tickets": 3,
+        "tickets_abiertos": 2,
+        "por_estado": [
+          {
+            "estado": "Asignado",
+            "total": "1"
+          },
+          {
+            "estado": "Registrado",
+            "total": "2"
+          }
+        ],
+        "mttr_promedio_horas": "0.00",
+        "sla_cumplimiento_estimado": "92%"
+      }
+    }
+  ],
+  "funcionalidad": [
+    {
+      "test": "Crear Ticket Público",
+      "status": "PASS",
+      "id": 3
+    },
+    {
+      "test": "Generación de Historial",
+      "status": "PASS"
+    }
+  ],
+  "seguridad": [
+    {
+      "test": "Exposición de pass_hash",
+      "status": "PASS"
+    }
+  ]
+}
