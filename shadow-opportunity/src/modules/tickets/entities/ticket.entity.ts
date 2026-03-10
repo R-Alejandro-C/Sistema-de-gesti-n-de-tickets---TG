@@ -10,8 +10,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../users/entities/user.entity';
-import { Local } from '../../catalogos/entities/local.entity';
-import { Area } from '../../catalogos/entities/area.entity';
+import { LocalArea } from '../../catalogos/entities/local-area.entity';
 import { Category } from '../../catalogos/entities/category.entity';
 import { SubCategory } from '../../catalogos/entities/sub-category.entity';
 import { TicketType } from '../../catalogos/entities/ticket-type.entity';
@@ -43,19 +42,11 @@ export class Ticket {
 
     @ApiProperty({ example: 1, nullable: true })
     @Column({ nullable: true })
-    id_local: number;
+    id_local_area: number;
 
-    @ManyToOne(() => Local, { nullable: true })
-    @JoinColumn({ name: 'id_local' })
-    local: Local;
-
-    @ApiProperty({ example: 1, nullable: true })
-    @Column({ nullable: true })
-    id_area: number;
-
-    @ManyToOne(() => Area, { nullable: true })
-    @JoinColumn({ name: 'id_area' })
-    area: Area;
+    @ManyToOne(() => LocalArea, (localArea) => localArea.tickets)
+    @JoinColumn({ name: 'id_local_area' })
+    localArea: LocalArea;
 
     @ApiProperty({ example: 1 })
     @Column()

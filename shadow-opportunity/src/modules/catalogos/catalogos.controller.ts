@@ -52,6 +52,13 @@ export class CatalogosController {
         return this.service.deleteLocal(+id);
     }
 
+    @ApiTags('Catálogos - Locales')
+    @Get('locales/:id/areas')
+    @ApiOperation({ summary: 'Listar áreas asignadas a un local' })
+    getLocalAreas(@Param('id') id: string) {
+        return this.service.getLocalAreas(+id);
+    }
+
     // --- AREAS ---
     @ApiTags('Catálogos - Áreas')
     @Post('areas')
@@ -64,8 +71,8 @@ export class CatalogosController {
     @ApiTags('Catálogos - Áreas')
     @Get('areas')
     @ApiOperation({ summary: 'Listar áreas con paginación' })
-    findAllAreas(@Query() pagination: PaginationDto) {
-        return this.service.findAllAreas(pagination);
+    findAllAreas(@Query() pagination: PaginationDto, @Query('id_local') id_local?: number) {
+        return this.service.findAllAreas(pagination, id_local);
     }
 
     @ApiTags('Catálogos - Áreas')
@@ -82,6 +89,13 @@ export class CatalogosController {
     @ApiOperation({ summary: 'Soft delete de área' })
     deleteArea(@Param('id') id: string) {
         return this.service.deleteArea(+id);
+    }
+
+    @ApiTags('Catálogos - Áreas')
+    @Get('areas/:id/categorias')
+    @ApiOperation({ summary: 'Listar categorías asignadas a un área' })
+    getAreaCategories(@Param('id') id: string) {
+        return this.service.getAreaCategories(+id);
     }
 
     // --- CATEGORIAS ---
@@ -130,6 +144,13 @@ export class CatalogosController {
     @ApiOperation({ summary: 'Restaurar categoría archivada' })
     restoreCategory(@Param('id') id: string) {
         return this.service.restoreCategory(+id);
+    }
+
+    @ApiTags('Catálogos - Categorías')
+    @Get('categorias/:id/subcategorias')
+    @ApiOperation({ summary: 'Listar subcategorías de una categoría' })
+    getCategorySubCategories(@Param('id') id: string) {
+        return this.service.getCategorySubCategories(+id);
     }
 
     // --- SUBCATEGORIAS ---

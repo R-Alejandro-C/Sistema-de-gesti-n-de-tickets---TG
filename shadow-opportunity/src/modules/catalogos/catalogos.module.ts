@@ -10,6 +10,9 @@ import { TicketType } from './entities/ticket-type.entity';
 import { Priority } from './entities/priority.entity';
 import { TicketStatus } from './entities/ticket-status.entity';
 import { Local } from './entities/local.entity';
+import { LocalArea } from './entities/local-area.entity';
+import { AreaCategory } from './entities/area-category.entity';
+import { CategorySubCategory } from './entities/category-subcategory.entity';
 
 @Module({
     imports: [
@@ -21,6 +24,9 @@ import { Local } from './entities/local.entity';
             TicketType,
             Priority,
             TicketStatus,
+            LocalArea,
+            AreaCategory,
+            CategorySubCategory,
         ]),
     ],
     controllers: [CatalogosController, CatalogosPublicController],

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, DeleteDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Area } from './area.entity';
+import { LocalArea } from './local-area.entity';
 
 @Entity('locales')
 export class Local {
@@ -16,8 +16,8 @@ export class Local {
     @Column({ nullable: true })
     direccion: string;
 
-    @OneToMany(() => Area, (area) => area.local)
-    areas: Area[];
+    @OneToMany(() => LocalArea, (localArea) => localArea.local)
+    localAreas: LocalArea[];
 
     @DeleteDateColumn()
     deletedAt: Date;

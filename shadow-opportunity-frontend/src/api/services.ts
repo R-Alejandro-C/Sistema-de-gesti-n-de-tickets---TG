@@ -13,6 +13,10 @@ export const publicCatalogService = {
         publicApi.get('/public/locales').then(res => res.data),
     getAreas: (localId?: number) =>
         publicApi.get(localId ? `/public/areas?localId=${localId}` : '/public/areas').then(res => res.data),
+    getAreaCategories: (areaId: number) =>
+        publicApi.get(`/public/areas/${areaId}/categorias`).then(res => res.data),
+    getCategorySubCategories: (catId: number) =>
+        publicApi.get(`/public/categorias/${catId}/subcategorias`).then(res => res.data),
 };
 
 export const publicTicketService = {
@@ -91,13 +95,20 @@ export const roleService = {
 export const catalogService = {
     // Locales
     getLocales: (page = 1, limit = 10) => api.get(`/catalogos/locales?page=${page}&limit=${limit}`).then(res => res.data),
+    getLocalAreas: (localId: number) => api.get(`/catalogos/locales/${localId}/areas`).then(res => res.data),
     createLocal: (data: any) => api.post('/catalogos/locales', data).then(res => res.data),
     updateLocal: (id: number, data: any) => api.patch(`/catalogos/locales/${id}`, data).then(res => res.data),
     deleteLocal: (id: number) => api.delete(`/catalogos/locales/${id}`).then(res => res.data),
 
     // Areas
-    getAreas: (page = 1, limit = 10) => api.get(`/catalogos/areas?page=${page}&limit=${limit}`).then(res => res.data),
+    getAreas: (page = 1, limit = 10, localId?: number) => {
+        let url = `/catalogos/areas?page=${page}&limit=${limit}`;
+        if (localId) url += `&id_local=${localId}`;
+        return api.get(url).then(res => res.data);
+    },
     createArea: (data: any) => api.post('/catalogos/areas', data).then(res => res.data),
+    getAreaCategories: (areaId: number) => api.get(`/catalogos/areas/${areaId}/categorias`).then(res => res.data),
+    getCategorySubCategories: (catId: number) => api.get(`/catalogos/categorias/${catId}/subcategorias`).then(res => res.data),
     updateArea: (id: number, data: any) => api.patch(`/catalogos/areas/${id}`, data).then(res => res.data),
     deleteArea: (id: number) => api.delete(`/catalogos/areas/${id}`).then(res => res.data),
 

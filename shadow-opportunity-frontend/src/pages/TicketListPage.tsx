@@ -145,6 +145,8 @@ export const TicketListPage = ({ myTicketsOnly = false }: TicketListPageProps) =
                             <tr>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Ticket</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Solicitante</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Local</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Área</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Estado</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Prioridad</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Acciones</th>
@@ -152,18 +154,18 @@ export const TicketListPage = ({ myTicketsOnly = false }: TicketListPageProps) =
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan={5} className="text-center py-10">Cargando datos...</td></tr>
+                                <tr><td colSpan={7} className="text-center py-10">Cargando datos...</td></tr>
                             ) : tickets.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center py-10 text-slate-400">No hay tickets registrados</td></tr>
+                                <tr><td colSpan={7} className="text-center py-10 text-slate-400">No hay tickets registrados</td></tr>
                             ) : (
                                 tickets.map((ticket) => (
-                                    <tr key={ticket.id_ticket} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={ticket.id_ticket} className="hover:bg-slate-50/50 transition-colors text-sm">
                                         <td className="px-6 py-4">
                                             <span className="font-bold text-primary-600">#{ticket.id_ticket}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-3">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs">
+                                                <div className="hidden sm:flex w-8 h-8 rounded-full bg-slate-100 items-center justify-center font-bold text-slate-500 text-xs">
                                                     {(ticket.nombre_solicitante || ticket.creador?.nombre || 'U').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
@@ -172,8 +174,14 @@ export const TicketListPage = ({ myTicketsOnly = false }: TicketListPageProps) =
                                                 </div>
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4 text-slate-600">
+                                            {ticket.localArea?.local?.nombre || <span className="text-slate-300 italic">N/A</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600">
+                                            {ticket.localArea?.area?.nombre || <span className="text-slate-300 italic">N/A</span>}
+                                        </td>
                                         <td className="px-6 py-4">
-                                            <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase border", getStatusColor(ticket.estado?.nombre))}>
+                                            <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase border whitespace-nowrap", getStatusColor(ticket.estado?.nombre))}>
                                                 {ticket.estado?.nombre}
                                             </span>
                                         </td>

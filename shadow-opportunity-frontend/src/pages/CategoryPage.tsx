@@ -95,7 +95,7 @@ export const CategoryPage = () => {
                     <thead className="bg-slate-50 border-b">
                         <tr>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Categoría</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Área Responsable</th>
+                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Áreas Responsables</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -110,9 +110,17 @@ export const CategoryPage = () => {
                                         <span className="font-semibold text-slate-700">{cat.nombre}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium border border-slate-200 uppercase tracking-tighter">
-                                            {cat.area?.nombre}
-                                        </span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {cat.areaCategories && cat.areaCategories.length > 0 ? (
+                                                cat.areaCategories.map((ac: any) => (
+                                                    <span key={ac.id_area} className="px-2 py-1 bg-primary-50 text-primary-600 rounded text-[10px] font-bold border border-primary-100 uppercase">
+                                                        {ac.area?.nombre}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-slate-400 italic text-xs">Sin áreas</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center space-x-2">

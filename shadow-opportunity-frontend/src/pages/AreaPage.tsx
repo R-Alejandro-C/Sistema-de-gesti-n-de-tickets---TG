@@ -112,9 +112,17 @@ export const AreaPage = () => {
                                         <span className="font-semibold text-slate-700">{area.nombre}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium border border-slate-200 uppercase tracking-tighter">
-                                            {locales.find(l => l.id_local === (area.id_local || area.local?.id_local))?.nombre || area.local?.nombre || 'Sin Asignar'}
-                                        </span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {area.localAreas && area.localAreas.length > 0 ? (
+                                                area.localAreas.map((la: any) => (
+                                                    <span key={la.id_local} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-bold border border-slate-200 uppercase">
+                                                        {la.local?.nombre}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-slate-400 italic text-xs">Sin locales</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center space-x-2">

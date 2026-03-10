@@ -29,6 +29,7 @@ export class UsersController {
     }
 
     @Get(':id')
+    @Roles('ADMIN')
     @ApiOperation({ summary: 'Obtener usuario por ID' })
     findOne(@Param('id') id: string) {
         return this.usersService.findById(+id);

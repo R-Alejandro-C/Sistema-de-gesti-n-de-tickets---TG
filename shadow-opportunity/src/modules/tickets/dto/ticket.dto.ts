@@ -16,12 +16,7 @@ export class CreateTicketDto {
     @ApiProperty({ example: 1 })
     @IsNotEmpty()
     @IsNumber()
-    id_local: number;
-
-    @ApiProperty({ example: 1 })
-    @IsNotEmpty()
-    @IsNumber()
-    id_area: number;
+    id_local_area: number;
 
     @ApiProperty({ example: 1 })
     @IsNotEmpty()

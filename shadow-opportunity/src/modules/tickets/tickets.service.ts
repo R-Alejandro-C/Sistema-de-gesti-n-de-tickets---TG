@@ -70,12 +70,6 @@ export class TicketsService {
         const regStatus = await this.statusRepo.findOne({ where: { nombre: 'Registrado' } });
         if (!regStatus) throw new Error('Estado "Registrado" no encontrado');
 
-        // Validar coherencia Area-Local
-        const area = await this.areaRepo.findOne({
-            where: { id_area: dto.id_area, id_local: dto.id_local }
-        });
-        if (!area) throw new Error('El área no coincide con el local seleccionado');
-
         const ticket = this.ticketRepo.create({
             ...dto,
             id_usuario_creador: user.id_usuario,
@@ -94,7 +88,10 @@ export class TicketsService {
             .leftJoinAndSelect('ticket.creador', 'creador')
             .leftJoinAndSelect('ticket.asignado', 'asignado')
             .leftJoinAndSelect('ticket.estado', 'estado')
-            .leftJoinAndSelect('ticket.prioridad', 'prioridad');
+            .leftJoinAndSelect('ticket.prioridad', 'prioridad')
+            .leftJoinAndSelect('ticket.localArea', 'localArea')
+            .leftJoinAndSelect('localArea.local', 'local')
+            .leftJoinAndSelect('localArea.area', 'area');
 
         if (user) {
             const isSolicitante = user.role === 'SOLICITANTE';
@@ -111,7 +108,7 @@ export class TicketsService {
 
         if (pagination.search) {
             query.andWhere(
-                '(ticket.detalle ILIKE :search OR creador.nombre ILIKE :search OR CAST(ticket.id_ticket AS TEXT) LIKE :search)',
+                '(ticket.detalle ILIKE :search OR creador.nombre ILIKE :search OR CAST(ticket.id_ticket AS TEXT) LIKE :search OR local.nombre ILIKE :search OR area.nombre ILIKE :search)',
                 { search: `%${pagination.search}%` }
             );
         }
@@ -130,7 +127,7 @@ export class TicketsService {
     async findOne(id: number, user: any): Promise<Ticket> {
         const ticket = await this.ticketRepo.findOne({
             where: { id_ticket: id },
-            relations: ['creador', 'asignado', 'categoria', 'subcategoria', 'tipo', 'prioridad', 'estado', 'historial'],
+            relations: ['creador', 'asignado', 'categoria', 'subcategoria', 'tipo', 'prioridad', 'estado', 'historial', 'localArea', 'localArea.local', 'localArea.area'],
         });
         if (!ticket) throw new NotFoundException('Ticket no encontrado');
         if (user && user.role === 'SOLICITANTE' && ticket.id_usuario_creador !== user.userId) {
@@ -259,14 +256,16 @@ export class TicketsService {
     async getTicketsByArea(startDate?: string, endDate?: string) {
         const query = this.ticketRepo.createQueryBuilder('ticket')
             .select('area.nombre', 'area').addSelect('COUNT(*)', 'total')
-            .leftJoin('ticket.area', 'area');
+            .leftJoin('ticket.localArea', 'localArea')
+            .leftJoin('localArea.area', 'area');
         return this.applyDateFilters(query, startDate, endDate).groupBy('area.nombre').getRawMany();
     }
 
     async getTicketsByLocal(startDate?: string, endDate?: string) {
         const query = this.ticketRepo.createQueryBuilder('ticket')
             .select('local.nombre', 'local').addSelect('COUNT(*)', 'total')
-            .leftJoin('ticket.local', 'local');
+            .leftJoin('ticket.localArea', 'localArea')
+            .leftJoin('localArea.local', 'local');
         return this.applyDateFilters(query, startDate, endDate).groupBy('local.nombre').getRawMany();
     }
 

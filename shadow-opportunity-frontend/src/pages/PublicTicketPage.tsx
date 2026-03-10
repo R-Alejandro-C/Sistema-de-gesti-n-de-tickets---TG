@@ -13,6 +13,7 @@ const publicTicketSchema = z.object({
     id_local: z.number().min(1, 'Seleccione un local'),
     id_area: z.number().min(1, 'Seleccione un área'),
     id_categoria: z.number().min(1, 'Seleccione una categoría'),
+    id_subcategoria: z.number().optional(),
     id_tipo: z.number().min(1, 'Seleccione un tipo'),
     detalle: z.string().min(10, 'Describa el problema con más detalle'),
 });
@@ -22,6 +23,7 @@ type PublicTicketForm = z.infer<typeof publicTicketSchema>;
 export const PublicTicketPage = () => {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
+    const [subCategories, setSubCategories] = useState<any[]>([]);
     const [types, setTypes] = useState<any[]>([]);
     const [locales, setLocales] = useState<any[]>([]);
     const [areas, setAreas] = useState<any[]>([]);
@@ -34,6 +36,7 @@ export const PublicTicketPage = () => {
             id_local: 0,
             id_area: 0,
             id_categoria: 0,
+            id_subcategoria: 0,
             id_tipo: 0,
             nombre_solicitante: '',
             mail_solicitante: '',
@@ -42,36 +45,110 @@ export const PublicTicketPage = () => {
     });
 
     const selectedLocal = watch('id_local');
-    const filteredAreas = selectedLocal ? areas.filter(a => a.id_local === selectedLocal || a.local?.id_local === selectedLocal) : [];
+    const selectedArea = watch('id_area');
+    const selectedCategory = watch('id_categoria');
 
     useEffect(() => {
-        setValue('id_area', 0);
+        if (selectedLocal > 0) {
+            publicCatalogService.getAreas(selectedLocal)
+                .then(res => {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    setAreas(data);
+                    setValue('id_area', 0);
+                    setValue('id_categoria', 0);
+                    setValue('id_subcategoria', 0);
+                })
+                .catch(err => {
+                    console.error('Error loading areas:', err);
+                    setAreas([]);
+                });
+        } else {
+            setAreas([]);
+            setCategories([]);
+            setSubCategories([]);
+            setValue('id_area', 0);
+            setValue('id_categoria', 0);
+            setValue('id_subcategoria', 0);
+        }
     }, [selectedLocal, setValue]);
 
     useEffect(() => {
+        if (selectedArea > 0) {
+            publicCatalogService.getAreaCategories(selectedArea)
+                .then(res => {
+                    const mapped = Array.isArray(res) ? res : (res.data || []);
+                    const cats = mapped.map((ac: any) => ac.categoria).filter(Boolean);
+                    setCategories(cats);
+                    setValue('id_categoria', 0);
+                    setValue('id_subcategoria', 0);
+                })
+                .catch(err => {
+                    console.error('Error loading categories:', err);
+                    setCategories([]);
+                });
+        } else {
+            setCategories([]);
+            setSubCategories([]);
+            setValue('id_categoria', 0);
+            setValue('id_subcategoria', 0);
+        }
+    }, [selectedArea, setValue]);
+
+    useEffect(() => {
+        if (selectedCategory > 0) {
+            publicCatalogService.getCategorySubCategories(selectedCategory)
+                .then(res => {
+                    const subs = Array.isArray(res) ? res.map((csc: any) => csc.subCategory).filter(Boolean) : [];
+                    setSubCategories(subs);
+                    setValue('id_subcategoria', 0);
+                })
+                .catch(err => {
+                    console.error('Error loading subcategories:', err);
+                    setSubCategories([]);
+                });
+        } else {
+            setSubCategories([]);
+            setValue('id_subcategoria', 0);
+        }
+    }, [selectedCategory, setValue]);
+
+    useEffect(() => {
+        setLoadingConfig(true);
         Promise.all([
-            publicCatalogService.getCategories(1, 100),
-            publicCatalogService.getTypes(),
+            publicCatalogService.getTypes().catch(() => ({ data: [] })),
             publicCatalogService.getLocales().catch(() => ({ data: [] })),
-            publicCatalogService.getAreas().catch(() => ({ data: [] }))
-        ]).then(([catRes, typeRes, locRes, areaRes]) => {
-            setCategories(Array.isArray(catRes) ? catRes : (catRes.data || []));
+        ]).then(([typeRes, locRes]) => {
             setTypes(Array.isArray(typeRes) ? typeRes : (typeRes.data || []));
             setLocales(Array.isArray(locRes) ? locRes : (locRes.data || []));
-            setAreas(Array.isArray(areaRes) ? areaRes : (areaRes.data || []));
-        }).catch(() => {
-            toast.error('Error al cargar configuraciones');
-        }).finally(() => {
-            setLoadingConfig(false);
-        });
+        })
+            .finally(() => {
+                setLoadingConfig(false);
+            });
     }, []);
 
     const onSubmit = async (data: PublicTicketForm) => {
         try {
-            const payload = { ...data };
+            // Con el cambio en el backend, 'areas' ahora contiene objetos LocalArea cuando se filtra por local
+            const selectedLA = areas.find(la => la.id_area === data.id_area);
+
+            if (!selectedLA || !selectedLA.id_local_area) {
+                toast.error('Error de consistencia: No se encontró la vinculación local/área');
+                return;
+            }
+
+            const { id_local, id_area, ...rest } = data;
+            const payload = {
+                ...rest,
+                id_local_area: selectedLA.id_local_area
+            };
+
             if (!payload.mail_solicitante) {
                 delete payload.mail_solicitante;
             }
+            if (!payload.id_subcategoria || payload.id_subcategoria === 0) {
+                delete payload.id_subcategoria;
+            }
+
             await publicTicketService.create(payload);
             setIsSubmitted(true);
             toast.success('Ticket registrado exitosamente');
@@ -154,16 +231,20 @@ export const PublicTicketPage = () => {
 
                         <div className="md:col-span-1">
                             <label className="block text-sm font-medium text-slate-700 mb-2">Área</label>
-                            <select {...register('id_area', { valueAsNumber: true })} className="input-field bg-white">
+                            <select {...register('id_area', { valueAsNumber: true })} className="input-field bg-white" disabled={!selectedLocal}>
                                 <option value={0}>Seleccione...</option>
-                                {filteredAreas.map(a => <option key={a.id_area} value={a.id_area}>{a.nombre}</option>)}
+                                {areas.map(la => (
+                                    <option key={la.id_area} value={la.id_area}>
+                                        {la.area?.nombre || la.nombre}
+                                    </option>
+                                ))}
                             </select>
                             {errors.id_area && <p className="text-red-500 text-xs mt-1">{errors.id_area.message}</p>}
                         </div>
 
                         <div className="md:col-span-1">
                             <label className="block text-sm font-medium text-slate-700 mb-2">Categoría</label>
-                            <select {...register('id_categoria', { valueAsNumber: true })} className="input-field bg-white">
+                            <select {...register('id_categoria', { valueAsNumber: true })} className="input-field bg-white" disabled={!selectedArea}>
                                 <option value={0}>Seleccione...</option>
                                 {categories.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre}</option>)}
                             </select>
@@ -171,9 +252,19 @@ export const PublicTicketPage = () => {
                         </div>
 
                         <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Subcategoría (Opcional)</label>
+                            <select {...register('id_subcategoria', { valueAsNumber: true })} className="input-field bg-white" disabled={!selectedCategory}>
+                                <option value={0}>Ninguna / Seleccione...</option>
+                                {subCategories.map(sc => (
+                                    sc && <option key={sc.id_subcategoria} value={sc.id_subcategoria}>{sc.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-1">
                             <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Solicitud</label>
                             <select {...register('id_tipo', { valueAsNumber: true })} className="input-field bg-white">
-                                <option value="">Seleccione...</option>
+                                <option value={0}>Seleccione...</option>
                                 {types.map(t => <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>)}
                             </select>
                             {errors.id_tipo && <p className="text-red-500 text-xs mt-1">{errors.id_tipo.message}</p>}

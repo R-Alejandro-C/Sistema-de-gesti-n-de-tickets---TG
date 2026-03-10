@@ -52,10 +52,11 @@ export class UsersService {
         });
     }
 
-    async findById(id: number): Promise<User | null> {
+    async findById(id: number): Promise<Partial<User> | null> {
         return this.usersRepository.findOne({
             where: { id_usuario: id },
             relations: ['rol'],
+            select: ['id_usuario', 'nombre', 'email', 'id_rol', 'activo', 'created_at'],
         });
     }
 

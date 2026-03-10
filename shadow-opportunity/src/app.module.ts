@@ -24,7 +24,7 @@ import { SeedModule } from './modules/seed/seed.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // Auto create tables - solo desarrollo
+        synchronize: false, // Auto create tables - solo desarrollo
       }),
       inject: [ConfigService],
     }),

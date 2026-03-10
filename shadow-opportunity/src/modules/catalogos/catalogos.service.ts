@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Area } from './entities/area.entity';
 import { Category } from './entities/category.entity';
 import { SubCategory } from './entities/sub-category.entity';
@@ -8,8 +8,26 @@ import { TicketType } from './entities/ticket-type.entity';
 import { TicketStatus } from './entities/ticket-status.entity';
 import { Priority } from './entities/priority.entity';
 import { Local } from './entities/local.entity';
+import { AreaCategory } from './entities/area-category.entity';
+import { CategorySubCategory } from './entities/category-subcategory.entity';
+import { LocalArea } from './entities/local-area.entity';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { UpdateAreaDto, UpdateCategoryDto, UpdateSubCategoryDto, UpdateStatusDto, UpdatePriorityDto, UpdateTypeDto, CreatePriorityDto, CreateStatusDto, CreateTypeDto, CreateLocalDto, UpdateLocalDto } from './dto/catalogos.dto';
+import {
+    UpdateAreaDto,
+    UpdateCategoryDto,
+    UpdateSubCategoryDto,
+    UpdateStatusDto,
+    UpdatePriorityDto,
+    UpdateTypeDto,
+    CreatePriorityDto,
+    CreateStatusDto,
+    CreateTypeDto,
+    CreateLocalDto,
+    UpdateLocalDto,
+    CreateAreaDto,
+    CreateCategoryDto,
+    CreateSubCategoryDto
+} from './dto/catalogos.dto';
 
 @Injectable()
 export class CatalogosService {
@@ -21,6 +39,9 @@ export class CatalogosService {
         @InjectRepository(TicketType) private typeRepo: Repository<TicketType>,
         @InjectRepository(TicketStatus) private statusRepo: Repository<TicketStatus>,
         @InjectRepository(Priority) private priorityRepo: Repository<Priority>,
+        @InjectRepository(LocalArea) private localAreaRepo: Repository<LocalArea>,
+        @InjectRepository(AreaCategory) private areaCategoryRepo: Repository<AreaCategory>,
+        @InjectRepository(CategorySubCategory) private categorySubCategoryRepo: Repository<CategorySubCategory>,
     ) { }
 
     // --- LOCALES ---
@@ -31,14 +52,14 @@ export class CatalogosService {
         const page = pagination.page || 1;
         const limit = pagination.limit || 10;
         const [data, total] = await this.localRepo.findAndCount({
-            relations: ['areas'],
+            relations: ['localAreas', 'localAreas.area'],
             skip: (page - 1) * limit,
             take: limit,
         });
         return { data, total, page, lastPage: Math.ceil(total / limit) };
     }
     async findOneLocal(id: number) {
-        const local = await this.localRepo.findOne({ where: { id_local: id }, relations: ['areas'] });
+        const local = await this.localRepo.findOne({ where: { id_local: id }, relations: ['localAreas', 'localAreas.area'] });
         if (!local) throw new NotFoundException('Local no encontrado');
         return local;
     }
@@ -52,27 +73,65 @@ export class CatalogosService {
     }
 
     // --- AREAS ---
-    async createArea(data: any) {
-        return this.areaRepo.save(this.areaRepo.create(data));
+    async createArea(dto: CreateAreaDto) {
+        const { nombre, id_local } = dto;
+        let area = await this.areaRepo.findOne({ where: { nombre } });
+        if (!area) {
+            area = await this.areaRepo.save(this.areaRepo.create({ nombre }));
+        }
+
+        if (id_local) {
+            await this.assignAreaToLocal(id_local, area.id_area);
+        }
+
+        return area;
     }
+
+    async assignAreaToLocal(id_local: number, id_area: number) {
+        const exists = await this.localAreaRepo.findOne({ where: { id_local, id_area } });
+        if (!exists) {
+            return this.localAreaRepo.save({ id_local, id_area });
+        }
+        return exists;
+    }
+
+    async getLocalAreas(localId: number) {
+        return this.localAreaRepo.find({
+            where: { id_local: localId },
+            relations: ['area'],
+        });
+    }
+
     async findAllAreas(pagination: PaginationDto, localId?: number) {
         const page = pagination.page || 1;
         const limit = pagination.limit || 10;
 
-        const whereClause = localId ? { local: { id_local: localId } } : {};
+        const query = this.areaRepo.createQueryBuilder('area')
+            .leftJoinAndSelect('area.localAreas', 'localArea')
+            .leftJoinAndSelect('localArea.local', 'local');
 
-        const [data, total] = await this.areaRepo.findAndCount({
-            where: whereClause,
-            relations: ['local'],
-            skip: (page - 1) * limit,
-            take: limit,
-        });
+        if (localId) {
+            query.andWhere('localArea.id_local = :localId', { localId });
+        }
+
+        const [data, total] = await query
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getManyAndCount();
+
         return { data, total, page, lastPage: Math.ceil(total / limit) };
     }
     async updateArea(id: number, dto: UpdateAreaDto) {
         const area = await this.areaRepo.findOne({ where: { id_area: id } });
         if (!area) throw new NotFoundException('Area no encontrada');
-        return this.areaRepo.save({ ...area, ...dto });
+
+        const { id_local, ...data } = dto;
+
+        if (id_local) {
+            await this.assignAreaToLocal(id_local, id);
+        }
+
+        return this.areaRepo.save({ ...area, ...data });
     }
     async deleteArea(id: number) {
         const area = await this.areaRepo.findOne({ where: { id_area: id } });
@@ -81,14 +140,55 @@ export class CatalogosService {
     }
 
     // --- CATEGORIAS ---
-    async createCategory(data: any) {
-        return this.catRepo.save(this.catRepo.create(data));
+    async createCategory(dto: CreateCategoryDto) {
+        const { nombre, id_area } = dto;
+        let cat = await this.catRepo.findOne({ where: { nombre } });
+        if (!cat) {
+            cat = await this.catRepo.save(this.catRepo.create({ nombre }));
+        }
+
+        if (id_area) {
+            await this.assignCategoryToArea(id_area, cat.id_categoria);
+        }
+
+        return cat;
     }
+
+    async assignCategoryToArea(id_area: number, id_categoria: number) {
+        const exists = await this.areaCategoryRepo.findOne({ where: { id_area, id_categoria } });
+        if (!exists) {
+            return this.areaCategoryRepo.save({ id_area, id_categoria });
+        }
+        return exists;
+    }
+
+    async assignSubCategoryToCategory(categoryId: number, subCategoryId: number) {
+        const exists = await this.categorySubCategoryRepo.findOne({
+            where: { id_categoria: categoryId, id_subcategoria: subCategoryId }
+        });
+        if (!exists) {
+            await this.categorySubCategoryRepo.save(
+                this.categorySubCategoryRepo.create({ id_categoria: categoryId, id_subcategoria: subCategoryId })
+            );
+        }
+    }
+
+    async getAreaCategories(areaId: number) {
+        return this.areaCategoryRepo.find({
+            where: { id_area: areaId },
+            relations: ['categoria'],
+        });
+    }
+
     async findAllCategories(pagination: PaginationDto) {
         const page = pagination.page || 1;
         const limit = pagination.limit || 10;
         const [data, total] = await this.catRepo.findAndCount({
-            relations: ['area'],
+            relations: {
+                areaCategories: {
+                    area: true
+                }
+            },
             skip: (page - 1) * limit,
             take: limit,
         });
@@ -101,11 +201,20 @@ export class CatalogosService {
             .where('categoria.deletedAt IS NOT NULL')
             .getMany();
     }
+
     async updateCategory(id: number, dto: UpdateCategoryDto) {
         const cat = await this.catRepo.findOne({ where: { id_categoria: id } });
         if (!cat) throw new NotFoundException('Categoría no encontrada');
-        return this.catRepo.save({ ...cat, ...dto });
+
+        const { id_area, ...data } = dto;
+
+        if (id_area) {
+            await this.assignCategoryToArea(id_area, id);
+        }
+
+        return this.catRepo.save({ ...cat, ...data });
     }
+
     async deleteCategory(id: number) {
         const cat = await this.catRepo.findOne({ where: { id_categoria: id } });
         if (!cat) throw new NotFoundException('Categoría no encontrada');
@@ -116,25 +225,59 @@ export class CatalogosService {
         return this.catRepo.restore(id);
     }
 
-    // --- SUBCATEGORIAS ---
-    async createSubCategory(data: any) {
-        return this.subCatRepo.save(this.subCatRepo.create(data));
+    async getCategorySubCategories(catId: number) {
+        return this.categorySubCategoryRepo.find({
+            where: { id_categoria: catId },
+            relations: ['subCategory'],
+        });
     }
+
+    // --- SUBCATEGORIAS ---
+    async createSubCategory(dto: CreateSubCategoryDto) {
+        const { id_categoria, ...data } = dto;
+        const subCat = await this.subCatRepo.save(this.subCatRepo.create(data));
+
+        if (id_categoria) {
+            await this.assignSubCategoryToCategory(id_categoria, subCat.id_subcategoria);
+        }
+
+        return subCat;
+    }
+
     async findAllSubCategories(pagination: PaginationDto) {
         const page = pagination.page || 1;
         const limit = pagination.limit || 10;
+
         const [data, total] = await this.subCatRepo.findAndCount({
-            relations: ['categoria', 'categoria.area'],
+            relations: {
+                categorySubCategories: {
+                    category: {
+                        areaCategories: {
+                            area: true
+                        }
+                    }
+                }
+            },
             skip: (page - 1) * limit,
             take: limit,
         });
+
         return { data, total, page, lastPage: Math.ceil(total / limit) };
     }
+
     async updateSubCategory(id: number, dto: UpdateSubCategoryDto) {
         const subCat = await this.subCatRepo.findOne({ where: { id_subcategoria: id } });
         if (!subCat) throw new NotFoundException('Subcategoría no encontrada');
-        return this.subCatRepo.save({ ...subCat, ...dto });
+
+        const { id_categoria, ...data } = dto;
+
+        if (id_categoria) {
+            await this.assignSubCategoryToCategory(id_categoria, id);
+        }
+
+        return this.subCatRepo.save({ ...subCat, ...data });
     }
+
     async deleteSubCategory(id: number) {
         const subCat = await this.subCatRepo.findOne({ where: { id_subcategoria: id } });
         if (!subCat) throw new NotFoundException('Subcategoría no encontrada');
@@ -195,4 +338,3 @@ export class CatalogosService {
         return this.typeRepo.softDelete(id);
     }
 }
-

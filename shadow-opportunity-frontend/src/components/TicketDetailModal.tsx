@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ticketService, catalogService, userService } from '../api/services';
-import { X, Loader2, Save, History, User } from 'lucide-react';
+import { X, Loader2, Save, History, User, MapPin, Layers } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn, formatDate, getStatusColor } from '../utils/helpers';
 
@@ -55,13 +55,14 @@ export const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate }: TicketM
     }, [selectedCategoria, setValue, ticket]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && ticket) {
             loadConfigs();
             reset({
-                id_estado: ticket?.id_estado,
-                id_prioridad: ticket?.id_prioridad,
-                id_usuario_asignado: ticket?.id_usuario_asignado,
-                id_subcategoria: ticket?.id_subcategoria || '',
+                id_estado: ticket.id_estado,
+                id_prioridad: ticket.id_prioridad,
+                id_usuario_asignado: ticket.id_usuario_asignado,
+                id_categoria: ticket.id_categoria,
+                id_subcategoria: ticket.id_subcategoria || '',
                 comentario_historial: '',
             });
         }
@@ -70,25 +71,53 @@ export const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate }: TicketM
     const loadConfigs = async () => {
         try {
             setLoading(true);
-            const [st, pr, usr, sub, cat] = await Promise.all([
+            const [st, pr, usr] = await Promise.all([
                 catalogService.getStatuses(),
                 catalogService.getPriorities(),
                 userService.getAll(1, 100),
-                catalogService.getSubCategories(1, 100),
-                catalogService.getCategories(1, 100)
             ]);
             setStatuses(st);
             setPriorities(pr);
-            setSubCategories(Array.isArray(sub) ? sub : (sub.data || []));
-            setCategories(Array.isArray(cat) ? cat : (cat.data || []));
             // Filtrar usuarios que sean soporte o admin para asignar como técnico
             setTechnicians(usr.data.filter((u: any) => u.rol?.nombre !== 'SOLICITANTE'));
+
+            // Cargar categorías iniciales basadas en el área del ticket
+            if (ticket?.localArea?.id_area) {
+                const areaCats = await catalogService.getAreaCategories(ticket.localArea.id_area);
+                setCategories(areaCats.map((ac: any) => ac.categoria).filter(Boolean));
+            }
+
+            // Cargar subcategorías iniciales basadas en la categoría del ticket
+            if (ticket?.id_categoria) {
+                const subCats = await catalogService.getCategorySubCategories(ticket.id_categoria);
+                setSubCategories(subCats.map((sc: any) => sc.subCategory).filter(Boolean));
+            }
         } catch (err) {
             toast.error('Error al cargar configuraciones');
         } finally {
             setLoading(false);
         }
     };
+
+    // Efecto para cargar categorías si cambia el ticket (aunque id_area suele ser estático en edición)
+    useEffect(() => {
+        if (ticket?.localArea?.id_area) {
+            catalogService.getAreaCategories(ticket.localArea.id_area).then(res => {
+                setCategories(res.map((ac: any) => ac.categoria).filter(Boolean));
+            });
+        }
+    }, [ticket?.localArea?.id_area]);
+
+    // Efecto para cargar subcategorías cuando cambia la categoría seleccionada
+    useEffect(() => {
+        if (selectedCategoria) {
+            catalogService.getCategorySubCategories(Number(selectedCategoria)).then(res => {
+                setSubCategories(res.map((sc: any) => sc.subCategory).filter(Boolean));
+            });
+        } else {
+            setSubCategories([]);
+        }
+    }, [selectedCategoria]);
 
     const onSubmit = async (data: TicketUpdateForm) => {
         try {
@@ -137,12 +166,20 @@ export const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate }: TicketM
                                     <p className="font-medium text-slate-700">{formatDate(ticket.fecha_creacion)}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-slate-400 uppercase font-bold">Tipo</p>
-                                    <p className="font-medium text-slate-700">{ticket.tipo?.nombre}</p>
+                                    <p className="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                        <MapPin size={10} /> Local
+                                    </p>
+                                    <p className="font-medium text-slate-700">{ticket.localArea?.local?.nombre || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-400 uppercase font-bold flex items-center gap-1">
+                                        <Layers size={10} /> Área
+                                    </p>
+                                    <p className="font-medium text-slate-700">{ticket.localArea?.area?.nombre || 'N/A'}</p>
                                 </div>
                                 <div className="col-span-2">
                                     <p className="text-xs text-slate-400 uppercase font-bold mb-1 flex justify-between items-center">
-                                        Categoría Afectada (Editable)
+                                        Categoría Afectada
                                     </p>
                                     <div className="grid grid-cols-2 gap-4">
                                         <select {...register('id_categoria', { valueAsNumber: true })} className="input-field bg-white py-1.5 px-3 text-sm h-10 border-slate-200">
@@ -151,9 +188,7 @@ export const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate }: TicketM
                                         </select>
                                         <select {...register('id_subcategoria')} className="input-field bg-white py-1.5 px-3 text-sm h-10 border-slate-200">
                                             <option value="">Sin Subcategoría</option>
-                                            {selectedCategoria && subcategories
-                                                .filter(s => s.id_categoria === Number(selectedCategoria) || s.categoria?.id_categoria === Number(selectedCategoria))
-                                                .map(s => <option key={s.id_subcategoria} value={s.id_subcategoria}>{s.nombre}</option>)}
+                                            {subcategories.map(s => <option key={s.id_subcategoria} value={s.id_subcategoria}>{s.nombre}</option>)}
                                         </select>
                                     </div>
                                 </div>
